@@ -237,3 +237,145 @@ def tela_boas_vindas(nome):
         )
 
         pygame.display.update()
+
+
+def salvar_ranking(nome, pontos):
+    ranking_path = "log.dat"  # agora chama log.dat
+    ranking = {}
+    if os.path.exists(ranking_path):
+        with open(ranking_path, "r") as file:
+            try:
+                ranking = json.load(file)
+            except:
+                ranking = {}
+    if "registros" not in ranking:
+        ranking["registros"] = []
+    
+    # Data e hora atual
+    agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    
+    # Adiciona a pontuação ao histórico (lista) com data/hora
+    ranking["registros"].append({
+        "nome": nome,
+        "pontos": pontos,
+        "data_hora": agora
+    })
+    # Mantém só os últimos 50 para o arquivo não crescer demais
+    ranking["registros"] = ranking["registros"][-50:]
+    with open(ranking_path, "w") as file:
+        json.dump(ranking, file, indent=4)
+
+
+def get_ultimos_registros(qtd=5):
+    ranking_path = "log.dat"
+    if os.path.exists(ranking_path):
+        with open(ranking_path, "r") as file:
+            try:
+                ranking = json.load(file)
+            except:
+                return []
+        registros = ranking.get("registros", [])
+        return registros[-qtd:][::-1]  # do mais recente para o mais antigo
+    else:
+        return []
+
+def exibir_game_over(pontos, nome):
+    tela.blit(d_screen, (0, 0))
+    texto_game_over = fonte_morte.render("Game Over", True, white)
+    texto_pontos = fonte_menu.render(f"Pontuação: {pontos}", True, white)
+    texto_nome = fonte_menu.render(f"Jogador: {nome}", True, white)
+    tela.blit(texto_game_over, (tamanho[0] // 2 - texto_game_over.get_width() // 2, 80))
+    tela.blit(texto_pontos, (tamanho[0] // 2 - texto_pontos.get_width() // 2, 240))
+    tela.blit(texto_nome, (tamanho[0] // 2 - texto_nome.get_width() // 2, 280))
+
+    ultimos = get_ultimos_registros(5)
+    titulo = fonte_menu.render("Últimas 5 partidas:", True, (255, 255, 0))
+    tela.blit(titulo, (tamanho[0] // 2 - titulo.get_width() // 2, 340))
+    for i, reg in enumerate(ultimos):
+        texto = f"{reg['nome']}: {reg['pontos']} pts"
+        if "data_hora" in reg:
+            texto += f" - {reg['data_hora']}"
+        txt = fonte_menu.render(texto, True, white)
+        tela.blit(txt, (tamanho[0] // 2 - txt.get_width() // 2, 380 + 30 * i))
+
+    motivacao = frase_motivacional(pontos)
+    texto_motivacional = fonte_menu.render(motivacao, True, (255, 255, 0))
+    tela.blit(texto_motivacional, (tamanho[0] // 2 - texto_motivacional.get_width() // 2, 530))
+
+    pygame.display.update()
+    pygame.time.wait(5000)
+
+def perguntar_jogar_novamente():
+    resposta = None
+
+    def sim():
+        nonlocal resposta
+        resposta = True
+        root.destroy()
+
+    def nao():
+        nonlocal resposta
+        resposta = False
+        root.destroy()
+
+    root = tk.Tk()
+    root.title("Jogar Novamente?")
+    root.resizable(False, False)
+
+    # Tamanho fixo e centralização rápida
+    largura, altura = 400, 200
+    x = root.winfo_screenwidth() // 2 - largura // 2
+    y = root.winfo_screenheight() // 2 - altura // 2
+    root.geometry(f"{largura}x{altura}+{x}+{y}")
+
+    # Estilo simples e bonito
+    root.configure(bg="#1e1e2e")
+
+    label_titulo = tk.Label(
+        root, text="FIM DE JOGO!", font=("Impact", 24),
+        fg="#ffe44a", bg="#1e1e2e", pady=10
+    )
+    label_titulo.pack()
+
+    label_pergunta = tk.Label(
+        root, text="Deseja jogar novamente?", font=("Arial", 13),
+        fg="white", bg="#1e1e2e"
+    )
+    label_pergunta.pack(pady=(0, 20))
+
+    frame_botoes = tk.Frame(root, bg="#1e1e2e")
+    frame_botoes.pack()
+
+    estilo_botao = {
+        "width": 10,
+        "height": 2,
+        "font": ("Arial", 12),
+        "fg": "white",
+        "bd": 0,
+        "relief": "flat",
+        "cursor": "hand2"
+    }
+
+    botao_sim = tk.Button(
+        frame_botoes, text="Sim 😄", bg="#4caf50",
+        activebackground="#388e3c", command=sim, **estilo_botao
+    )
+    botao_sim.pack(side="left", padx=15)
+
+    botao_nao = tk.Button(
+        frame_botoes, text="Não 😢", bg="#f44336",
+        activebackground="#c62828", command=nao, **estilo_botao
+    )
+    botao_nao.pack(side="left", padx=15)
+
+    # Rodapé opcional
+    rodape = tk.Label(
+        root, text="How to Train Your Dragon", font=("Arial", 9, "italic"),
+        fg="#888", bg="#1e1e2e"
+    )
+    rodape.pack(side="bottom", pady=10)
+
+    # Exibir imediatamente
+    root.after(10, lambda: root.deiconify())
+    root.mainloop()
+    return resposta
